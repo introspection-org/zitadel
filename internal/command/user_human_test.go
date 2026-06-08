@@ -3738,6 +3738,28 @@ func newRegisterHumanEvent(username, password string, changeRequired, userLoginM
 	return event
 }
 
+func TestAddHumanValidate_AllowsExternalIDPWithoutProfileNames(t *testing.T) {
+	human := AddHumanFromDomain(
+		&domain.Human{
+			Profile: &domain.Profile{},
+			Email: &domain.Email{
+				EmailAddress: "support@zitadel.com",
+			},
+		},
+		nil,
+		nil,
+		&domain.UserIDPLink{
+			IDPConfigID:    "idpID",
+			DisplayName:    "support@zitadel.com",
+			ExternalUserID: "externalID",
+		},
+	)
+
+	require.NoError(t, human.Validate(nil))
+	assert.Equal(t, "support@zitadel.com", human.Username)
+	assert.Equal(t, "support@zitadel.com", human.DisplayName)
+}
+
 func TestAddHumanCommand(t *testing.T) {
 	type fields struct {
 		idGenerator id.Generator

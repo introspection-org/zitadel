@@ -99,11 +99,15 @@ func (h *AddHuman) Validate(hasher *crypto.Hasher) (err error) {
 		return zerrors.ThrowInvalidArgument(nil, "V2-zzad3", "Errors.Invalid.Argument")
 	}
 
-	if h.FirstName = strings.TrimSpace(h.FirstName); h.FirstName == "" {
-		return zerrors.ThrowInvalidArgument(nil, "USER-UCej2", "Errors.User.Profile.FirstNameEmpty")
-	}
-	if h.LastName = strings.TrimSpace(h.LastName); h.LastName == "" {
-		return zerrors.ThrowInvalidArgument(nil, "USER-4hB7d", "Errors.User.Profile.LastNameEmpty")
+	h.FirstName = strings.TrimSpace(h.FirstName)
+	h.LastName = strings.TrimSpace(h.LastName)
+	if !h.hasExternalIDPLink() {
+		if h.FirstName == "" {
+			return zerrors.ThrowInvalidArgument(nil, "USER-UCej2", "Errors.User.Profile.FirstNameEmpty")
+		}
+		if h.LastName == "" {
+			return zerrors.ThrowInvalidArgument(nil, "USER-4hB7d", "Errors.User.Profile.LastNameEmpty")
+		}
 	}
 	h.ensureDisplayName()
 
@@ -124,6 +128,10 @@ func (h *AddHuman) Validate(hasher *crypto.Hasher) (err error) {
 		}
 	}
 	return nil
+}
+
+func (h *AddHuman) hasExternalIDPLink() bool {
+	return h.ExternalIDP || len(h.Links) > 0
 }
 
 type AddMetadataEntry struct {

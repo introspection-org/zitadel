@@ -7,6 +7,35 @@ import (
 	"github.com/zitadel/zitadel/internal/query"
 )
 
+func Test_mapExternalUserToLoginUser_AllowsEmailOnlyProfile(t *testing.T) {
+	externalUser := &domain.ExternalUser{
+		IDPConfigID:    "idpID",
+		ExternalUserID: "externalID",
+		Email:          "user@example.com",
+	}
+
+	human, link, metadata := mapExternalUserToLoginUser(externalUser, false)
+
+	if human.Username != "" {
+		t.Errorf("Username = %q, want empty before command fallback", human.Username)
+	}
+	if human.FirstName != "" {
+		t.Errorf("FirstName = %q, want empty", human.FirstName)
+	}
+	if human.LastName != "" {
+		t.Errorf("LastName = %q, want empty", human.LastName)
+	}
+	if human.EmailAddress != "user@example.com" {
+		t.Errorf("EmailAddress = %q, want user@example.com", human.EmailAddress)
+	}
+	if link.DisplayName != "user@example.com" {
+		t.Errorf("link.DisplayName = %q, want user@example.com", link.DisplayName)
+	}
+	if metadata != nil {
+		t.Errorf("metadata = %v, want nil", metadata)
+	}
+}
+
 func Test_hasEmailChanged(t *testing.T) {
 	type args struct {
 		user         *query.User

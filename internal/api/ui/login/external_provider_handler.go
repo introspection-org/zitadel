@@ -1393,10 +1393,17 @@ func mapExternalUserToLoginUser(externalUser *domain.ExternalUser, mustBeDomain 
 			IsPhoneVerified: externalUser.IsPhoneVerified,
 		}
 	}
+	linkDisplayName := strings.TrimSpace(externalUser.PreferredUsername)
+	if linkDisplayName == "" {
+		linkDisplayName = strings.TrimSpace(string(externalUser.Email))
+	}
+	if linkDisplayName == "" {
+		linkDisplayName = strings.TrimSpace(externalUser.DisplayName)
+	}
 	externalIDP := &domain.UserIDPLink{
 		IDPConfigID:    externalUser.IDPConfigID,
 		ExternalUserID: externalUser.ExternalUserID,
-		DisplayName:    externalUser.PreferredUsername,
+		DisplayName:    linkDisplayName,
 	}
 	return human, externalIDP, externalUser.Metadatas
 }
