@@ -6,6 +6,31 @@ import { getServiceConfig } from "./lib/service-url";
 
 const logger = createLogger("middleware");
 
+const PROXY_PATHS = ["/.well-known/", "/oauth/", "/oidc/", "/idps/callback/", "/saml/"];
+const SKIP_PATHS = ["/healthy", "/ready"];
+
+function getBasePath(): string {
+  return process.env.NEXT_PUBLIC_BASE_PATH || "";
+}
+
+export function normalizeProxyPathname(pathname: string, basePath = getBasePath()): string {
+  if (!basePath) {
+    return pathname;
+  }
+  if (pathname === basePath) {
+    return "/";
+  }
+  if (pathname.startsWith(`${basePath}/`)) {
+    return pathname.slice(basePath.length) || "/";
+  }
+  return pathname;
+}
+
+export function isProxyPath(pathname: string, basePath = getBasePath()): boolean {
+  const normalizedPath = normalizeProxyPathname(pathname, basePath);
+  return PROXY_PATHS.some((prefix) => normalizedPath.startsWith(prefix));
+}
+
 export const config = {
   matcher: ["/.well-known/:path*", "/oauth/:path*", "/oidc/:path*", "/idps/callback/:path*", "/saml/:path*", "/:path*"],
 };
@@ -23,8 +48,9 @@ export async function proxy(request: NextRequest) {
   // Internal infrastructure routes — skip middleware entirely.
   // /healthy and /ready are Kubernetes/Docker health probes that must respond
   // without depending on a ZITADEL backend.
-  const skipPaths = ["/healthy", "/ready"];
-  if (skipPaths.includes(request.nextUrl.pathname)) {
+  const normalizedPathname = normalizeProxyPathname(request.nextUrl.pathname);
+
+  if (SKIP_PATHS.includes(normalizedPathname)) {
     return NextResponse.next({ request: { headers: requestHeaders } });
   }
 
@@ -59,10 +85,7 @@ export async function proxy(request: NextRequest) {
   }
 
   // Only proxy paths need to be rewritten to the ZITADEL backend
-  const proxyPaths = ["/.well-known/", "/oauth/", "/oidc/", "/idps/callback/", "/saml/"];
-  const isMatched = proxyPaths.some((prefix) => request.nextUrl.pathname.startsWith(prefix));
-
-  if (!isMatched) {
+  if (!isProxyPath(request.nextUrl.pathname)) {
     return NextResponse.next({
       request: { headers: requestHeaders },
       headers: responseHeaders,
@@ -80,7 +103,7 @@ export async function proxy(request: NextRequest) {
   responseHeaders.set("Access-Control-Allow-Origin", "*");
   responseHeaders.set("Access-Control-Allow-Headers", "*");
 
-  request.nextUrl.href = `${baseUrl}${request.nextUrl.pathname}${request.nextUrl.search}`;
+  request.nextUrl.href = `${baseUrl}${normalizedPathname}${request.nextUrl.search}`;
 
   return NextResponse.rewrite(request.nextUrl, {
     request: {
